@@ -1,0 +1,8 @@
+## Ignore everything by default
+*
+
+## Only monitor specific files
+!.gitignore
+!makefile
+!*.cpp
+!*.hpp
