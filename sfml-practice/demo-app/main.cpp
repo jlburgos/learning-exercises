@@ -76,7 +76,7 @@ int main() {
       }
     }
 
-    // Change color 4 times a second
+    // Change color at a configurable rate
     if (clockColor.getElapsedTime().asMilliseconds() > (1000 / maxAfterImages)) {
       //std::cout << "Num afterImages: " << afterImages.size() << std::endl;
       // Generate a random number within the specified range
