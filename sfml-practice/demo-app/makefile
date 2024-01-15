@@ -118,16 +118,16 @@ MAKEFLAGS += -j$(NPROCS)
 ## Note: https://semver.org/
 BIN_NAME = demo
 BUILD_VERSION   ?= 0.0.0
+BIN_DEBUG_BIN   := $(BIN_DIR)/$(BIN_NAME)-$(BUILD_VERSION)-debug.bin
+BIN_RELEASE_BIN := $(BIN_DIR)/$(BIN_NAME)-$(BUILD_VERSION)-release.bin
 BIN_DEBUG_LNK   := $(BIN_NAME)-$(BUILD_VERSION)-debug.lnk
 BIN_RELEASE_LNK := $(BIN_NAME)-$(BUILD_VERSION)-release.lnk
-BIN_DEBUG   := $(BIN_DIR)/$(BIN_DEBUG_LNK)
-BIN_RELEASE := $(BIN_DIR)/$(BIN_RELEASE_LNK)
 
 ## User targets
 default: debug-build release-build
 	@echo "------------------------------------------------------------------------------"
-	@echo "--- Built Executable: '$(BIN_DEBUG_LNK)' ---> '$(BIN_DEBUG)'"
-	@echo "--- Built Executable: '$(BIN_RELEASE_LNK)' ---> '$(BIN_RELEASE)'"
+	@echo "--- Built Executable: '$(BIN_DEBUG_LNK)' ---> '$(BIN_DEBUG_BIN)'"
+	@echo "--- Built Executable: '$(BIN_RELEASE_LNK)' ---> '$(BIN_RELEASE_BIN)'"
 	@echo "------------------------------------------------------------------------------"
 debug-build: $(DIRS) $(BIN_DEBUG_LNK)
 release-build: $(DIRS) $(BIN_RELEASE_LNK)
@@ -138,17 +138,17 @@ $(DIRS):
 	@mkdir -p $(BUILD_DIR)
 
 ## Link to executables
-$(BIN_DEBUG_LNK): $(BIN_DEBUG)
-	@ln -s $(BIN_DEBUG) $(BIN_DEBUG_LNK) || true
+$(BIN_DEBUG_LNK): $(BIN_DEBUG_BIN)
+	@ln -s $(BIN_DEBUG_BIN) $(BIN_DEBUG_LNK) || true
 
-$(BIN_RELEASE_LNK): $(BIN_RELEASE)
-	@ln -s $(BIN_RELEASE) $(BIN_RELEASE_LNK) || true
+$(BIN_RELEASE_LNK): $(BIN_RELEASE_BIN)
+	@ln -s $(BIN_RELEASE_BIN) $(BIN_RELEASE_LNK) || true
 
 ## Compile final binary
-$(BIN_DEBUG): $(OBJS_O_DEBUG)
+$(BIN_DEBUG_BIN): $(OBJS_O_DEBUG)
 	$(CXX) -o "$@" $(OBJS_O_DEBUG) $(OPTIMIZATION_DEBUG) $(LIB) $(SFML_FLAGS)
 
-$(BIN_RELEASE): $(OBJS_O_RELEASE)
+$(BIN_RELEASE_BIN): $(OBJS_O_RELEASE)
 	$(CXX) -o "$@" $(OBJS_O_RELEASE) $(OPTIMIZATION_RELEASE) $(LIB) $(SFML_FLAGS)
 
 ## Compile individual CPP object files (debug & release)
@@ -169,10 +169,7 @@ $(BUILD_DIR)/%.release.o: %.cpp $(DIRS)
 
 PHONY += clean
 clean:
-	@$(RM) -r '$(BUILD_DIR)'
-	@$(RM) -r '$(BIN_DIR)'
-	@$(RM) $(wildcard *.lnk) 
-#	@$(MAKE) $(DIRS)
+	@$(RM) -r $(BUILD_DIR) $(BIN_DIR) $(wildcard *.lnk) 
 
 ## Set up phony targets
 .PHONY := $(PHONY)
