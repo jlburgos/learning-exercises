@@ -1,16 +1,84 @@
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 #include <list>
 #include <memory>
+#include <numbers>
+#include <random>
 #include <ranges>
 #include <sstream>
 
+#include <SFML/Config.hpp>
 #include <SFML/Graphics.hpp>
 
-#include "ellipse.hpp"
-#include "numerics-wrapper.hpp"
+using U8 = sf::Uint8;
+using U16 = sf::Uint16;
+using U32 = sf::Uint32;
+using U64 = sf::Uint64;
+
+using I8 = sf::Int8;
+using I16 = sf::Int16;
+using I32 = sf::Int32;
+using I64 = sf::Int64;
+
+using F32 = float;
+using F64 = double;
+
+namespace Numbers {
+  namespace {
+    // Create a random device for seeding the generator
+    static std::random_device rand_dev{};
+    // Initialize the Mersenne Twister engine with the random device
+    static std::mt19937 engine(rand_dev());
+
+    template<class T>
+      concept Number = std::is_integral<T>::value || std::is_floating_point<T>::value;
+  }
+
+  constexpr F32 PI = std::numbers::pi_v<F32>;
+
+  template<Number T>
+    T randNum(const T min = std::numeric_limits<T>::min(), const T max = std::numeric_limits<T>::max()) {
+      // Define the value min/max range for the uniform numeric distribution and apply engine
+      return std::uniform_int_distribution<T>(min,max)(engine);
+    }
+}
+
+class EllipseShape : public sf::Shape {
+private :
+    sf::Vector2f m_radius;
+
+public :
+    explicit EllipseShape(const sf::Vector2f& radius = sf::Vector2f(0, 0)) : m_radius(radius) {
+        update();
+    }
+
+    void setRadius(const sf::Vector2f& radius) {
+        m_radius = radius;
+        update();
+    }
+
+    const sf::Vector2f& getRadius() const {
+        return m_radius;
+    }
+
+    virtual std::size_t getPointCount() const override {
+        //return 30; // fixed, but could be an attribute of the class if needed
+        return 3; // fixed, but could be an attribute of the class if needed
+    }
+
+    virtual sf::Vector2f getPoint(unsigned long index) const override {
+        static const float pi = 3.141592654f;
+
+        float angle = index * 2 * pi / getPointCount() - pi / 2;
+        float x = std::cos(angle) * m_radius.x;
+        float y = std::sin(angle) * m_radius.y * 1.5f; // stretch it along the y-axis!
+
+        return sf::Vector2f(m_radius.x + x, m_radius.y + y);
+    }
+};
 
 class Layer {
   private:
