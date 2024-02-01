@@ -4,7 +4,6 @@
 #include <limits>
 #include <list>
 #include <memory>
-#include <optional>
 #include <ranges>
 #include <sstream>
 
@@ -82,13 +81,6 @@ class AfterImagesContainer : public sf::Drawable {
 
 namespace Text {
   const char* ARIAL_TTF="/System/Library/Fonts/Supplemental/Arial Unicode.ttf";
-}
-
-const std::optional<U8> create(const bool b) {
-  if (b) {
-    return 42;
-  }
-  return {};
 }
 
 const sf::Vector2f transform(const F32 periodMS, const F32 timeMS) {
