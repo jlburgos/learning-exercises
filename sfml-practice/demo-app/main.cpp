@@ -36,7 +36,9 @@ class AfterImagesContainer : public sf::Drawable {
     AfterImagesContainer(const U8 _maxAfterImages) : maxAfterImages(_maxAfterImages) {
     }
 
-    std::size_t size() { return drawables.size(); }
+    std::size_t size() const {
+      return drawables.size();
+    }
 
     virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const override {
       for (const std::unique_ptr<sf::Drawable>& drawable : drawables) {
