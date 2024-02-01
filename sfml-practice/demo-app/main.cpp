@@ -22,11 +22,9 @@ class Layer {
       drawables.push_back(drawable);
     }
     void draw() {
-      window->clear();
       for (const sf::Drawable* const drawable : drawables) {
         window->draw(*drawable);
       }
-      window->display();
     }
 };
 
@@ -221,7 +219,9 @@ I32 main() {
     centeredCircle.setFillColor(sf::Color::Green);
 
     // Redraw things
+    window.clear();
     layer.draw();
+    window.display();
   }
 
   return EXIT_SUCCESS;
