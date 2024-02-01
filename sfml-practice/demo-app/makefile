@@ -18,7 +18,7 @@ OPTIMIZATION_DEBUG=\
 OPTIMIZATION_RELEASE=\
 	-O3
 
-## Compiler flags to check "almost everything" because g++ doesn't have a "-Weverything-i-want" flag :P
+## Compiler flags to check "almost everything" because C++ compiler doesn't have a "-Weverything-i-want" flag :P
 ## Notes: https://stackoverflow.com/questions/5088460/flags-to-enable-thorough-and-verbose-g-warnings
 CXX_COMPILER_FLAGS=\
 	-Wall \
@@ -111,13 +111,18 @@ OBJS_SRC  := $(wildcard *.cpp)
 OBJS_O_DEBUG    := $(addprefix $(BUILD_DIR)/, $(OBJS_SRC:%.cpp=%.debug.o))
 OBJS_O_RELEASE  := $(addprefix $(BUILD_DIR)/, $(OBJS_SRC:%.cpp=%.release.o))
 
+## Some debug stuff!
+#$(info "OBJS SRC: $(OBJS_SRC)")
+#$(info "OBJS O DEBUG: $(OBJS_O_DEBUG)")
+#$(info "OBJS O RELEA: $(OBJS_O_RELEASE)")
+
 ## Parallel build
-MAKEFLAGS += -j$(NPROCS)
+#MAKEFLAGS += -j$(NPROCS)
 
 ## Set up final targets
 ## Note: https://semver.org/
-BIN_NAME = demo
 BUILD_VERSION   ?= 0.0.0
+BIN_NAME        = demo
 BIN_DEBUG_BIN   := $(BIN_DIR)/$(BIN_NAME)-$(BUILD_VERSION)-debug.bin
 BIN_RELEASE_BIN := $(BIN_DIR)/$(BIN_NAME)-$(BUILD_VERSION)-release.bin
 BIN_DEBUG_LNK   := $(BIN_NAME)-$(BUILD_VERSION)-debug.lnk
@@ -132,11 +137,6 @@ default: debug-build release-build
 debug-build: $(DIRS) $(BIN_DEBUG_LNK)
 release-build: $(DIRS) $(BIN_RELEASE_LNK)
 
-## Create bin and build directories
-$(DIRS):
-	@mkdir -p $(BIN_DIR)
-	@mkdir -p $(BUILD_DIR)
-
 ## Link to executables
 $(BIN_DEBUG_LNK): $(BIN_DEBUG_BIN)
 	@ln -s $(BIN_DEBUG_BIN) $(BIN_DEBUG_LNK) || true
@@ -146,10 +146,10 @@ $(BIN_RELEASE_LNK): $(BIN_RELEASE_BIN)
 
 ## Compile final binary
 $(BIN_DEBUG_BIN): $(OBJS_O_DEBUG)
-	$(CXX) -o "$@" $(OBJS_O_DEBUG) $(OPTIMIZATION_DEBUG) $(LIB) $(SFML_FLAGS)
+	$(CXX) -v -o "$@" $(OBJS_O_DEBUG) $(OPTIMIZATION_DEBUG) $(LIB) $(SFML_FLAGS)
 
 $(BIN_RELEASE_BIN): $(OBJS_O_RELEASE)
-	$(CXX) -o "$@" $(OBJS_O_RELEASE) $(OPTIMIZATION_RELEASE) $(LIB) $(SFML_FLAGS)
+	$(CXX) -v -o "$@" $(OBJS_O_RELEASE) $(OPTIMIZATION_RELEASE) $(LIB) $(SFML_FLAGS)
 
 ## Compile individual CPP object files (debug & release)
 $(BUILD_DIR)/%.debug.o: %.cpp $(DIRS)
@@ -157,6 +157,11 @@ $(BUILD_DIR)/%.debug.o: %.cpp $(DIRS)
 
 $(BUILD_DIR)/%.release.o: %.cpp $(DIRS)
 	$(CXX) -c -o '$@' '$<' $(OPTIMIZATION_RELEASE) $(OPTS) $(INC)
+
+## Create bin and build directories
+$(DIRS):
+	@mkdir -p $(BIN_DIR)
+	@mkdir -p $(BUILD_DIR)
 
 ## Compile web-assembly version using docker container
 ## Note: Disabling compile pipeline experiments for now
