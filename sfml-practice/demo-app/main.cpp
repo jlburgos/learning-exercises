@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstdint>
@@ -10,79 +11,88 @@
 #include <ranges>
 #include <sstream>
 #include <string>
+#include <queue>
 
 #include <SFML/Config.hpp>
 #include <SFML/Graphics.hpp>
 
-using U8 = sf::Uint8;
-using U16 = sf::Uint16;
-using U32 = sf::Uint32;
-using U64 = sf::Uint64;
+using U8 = sf::Uint8;   // 1 byte // unsigned char
+using U16 = sf::Uint16; // 2 byte // unsigned short
+using U32 = sf::Uint32; // 4 byte // unsigned int
+using U64 = sf::Uint64; // 8 byte // unsigned long long
 
-using I8 = sf::Int8;
-using I16 = sf::Int16;
-using I32 = sf::Int32;
-using I64 = sf::Int64;
+using I8 = sf::Int8;   // 1 byte // signed char
+using I16 = sf::Int16; // 2 byte // signed short
+using I32 = sf::Int32; // 4 byte // signed int
+using I64 = sf::Int64; // 8 byte // signed long long
 
-using F32 = float;
-using F64 = double;
+using F32 = float;  // 4 byte
+using F64 = double; // 8 byte
 
 namespace Numbers {
   namespace {
     // Create a random device for seeding the generator
-    static std::random_device rand_dev{};
     // Initialize the Mersenne Twister engine with the random device
-    static std::mt19937 engine(rand_dev());
+    std::mt19937 engine(std::random_device{}());
 
     template<class T>
-      concept Number = std::is_integral<T>::value || std::is_floating_point<T>::value;
+      concept NumberType = std::is_integral<T>::value || std::is_floating_point<T>::value;
   }
 
   constexpr F32 PI = std::numbers::pi_v<F32>;
 
-  template<Number T>
+  template<NumberType T>
     T randNum(const T min, const T max) {
       // Apply the value min/max range for the uniform numeric distribution and apply engine
       return std::uniform_int_distribution<T>(min,max)(engine);
     }
 
-  template<Number T>
+  template<NumberType T>
+    constexpr T min() {
+      return std::numeric_limits<T>::min();
+    }
+
+  template<NumberType T>
+    constexpr T max() {
+      return std::numeric_limits<T>::max();
+    }
+
+  template<NumberType T>
     T randNum() {
       // Define the value min/max range for the uniform numeric distribution and apply engine
-      constexpr T min = std::numeric_limits<T>::min();
-      constexpr T max = std::numeric_limits<T>::max();
-      return randNum<T>(min, max);
+      return randNum<T>(min<T>(), max<T>());
     }
 }
 
-class EllipseShape : public sf::Shape {
-private :
+struct EllipseShape : public sf::Shape {
     sf::Vector2f m_radius;
+    F32 dx;
+    F32 dy;
 
-public :
-    EllipseShape(const sf::Vector2f& radius = sf::Vector2f(0, 0)) : m_radius(radius) {
-        update();
-    }
-
-    void setRadius(const sf::Vector2f& radius) {
-        m_radius = radius;
-        update();
-    }
-
-    const sf::Vector2f& getRadius() const {
-        return m_radius;
+    EllipseShape(const sf::Vector2f& radius) : m_radius(radius) {
+      dx = 1.0f;
+      dy = 1.0f;
+      update();
     }
 
     virtual std::size_t getPointCount() const override {
-        return 30; // fixed, but could be an attribute of the class if needed
-        //return 3; // fixed, but could be an attribute of the class if needed
+      return 30; // fixed, but could be an attribute of the class if needed
+                 //return 3; // fixed, but could be an attribute of the class if needed
     }
 
-    virtual sf::Vector2f getPoint(unsigned long index) const override {
-        float angle = index * 2 * Numbers::PI / getPointCount() - Numbers::PI / 2;
-        float x = std::cos(angle) * m_radius.x;
-        float y = std::sin(angle) * m_radius.y * 1.5f; // stretch it along the y-axis!
-        return sf::Vector2f(m_radius.x + x, m_radius.y + y);
+    virtual sf::Vector2f getPoint(const unsigned long index) const override {
+      const F32 angle = index * 2 * Numbers::PI / getPointCount() - Numbers::PI / 2;
+      const F32 x = std::cos(angle) * m_radius.x * dx;
+      const F32 y = std::sin(angle) * m_radius.y * dy;
+      return sf::Vector2f(m_radius.x + x, m_radius.y + y);
+    }
+
+    void setRadius() {
+      update();
+    }
+
+    sf::Vector2f& getRadius() {
+      return m_radius;
     }
 };
 
@@ -135,41 +145,47 @@ class AfterImagesContainer : public sf::Drawable {
         sf::CircleShape* circle = nullptr;
         sf::RectangleShape* rectangle = nullptr;
 
-        if ((ellipse = dynamic_cast<EllipseShape*>(drawable.get()))) {
+        if ((ellipse = dynamic_cast<EllipseShape*>(drawable.get()))) { // ellipse
           sf::Color color = ellipse->getFillColor();
           color.a = static_cast<U8>(color.a - (255 / maxAfterImages));
           ellipse->setFillColor(color);
-          ellipse->setRadius(sf::Vector2f(ellipse->getRadius() * 1.005f));
-        } else if ((circle = dynamic_cast<sf::CircleShape*>(drawable.get()))) {
+          if (color.a > 255 / 2) {
+            ellipse->dx = ellipse->dx * 1.05f;
+          } else {
+            ellipse->dx = ellipse->dx * 0.95f;
+            ellipse->dy = ellipse->dy * 1.05f;
+          }
+          ellipse->setRadius();
+        } else if ((circle = dynamic_cast<sf::CircleShape*>(drawable.get()))) { // circle
           sf::Color color = circle->getFillColor();
           color.a = static_cast<U8>(color.a - (255 / maxAfterImages));
           circle->setFillColor(color);
           circle->setRadius(circle->getRadius() * 1.005f);
-        } else if ((rectangle = dynamic_cast<sf::RectangleShape*>(drawable.get()))) {
+        } else if ((rectangle = dynamic_cast<sf::RectangleShape*>(drawable.get()))) { // rectangle
           sf::Color color = rectangle->getFillColor();
           color.a = static_cast<U8>(color.a - (255 / maxAfterImages));
           rectangle->setFillColor(color);
           rectangle->setScale(sf::Vector2f(rectangle->getScale() * 1.005f));
         } else {
-          std::cout << "Encountered a non-ellipse shape! " << drawables.size() << std::endl;
+          std::cout << "Encountered some unknown shape! " << std::endl;
         }
-        
+
       }
     }
 };
 
 namespace Text {
-  const char* ARIAL_TTF="/System/Library/Fonts/Supplemental/Arial Unicode.ttf";
+  constexpr const char* ARIAL_TTF="/System/Library/Fonts/Supplemental/Arial Unicode.ttf";
 }
 
 const sf::Vector2f transform(const F32 periodMS, const F32 timeMS) {
-    const F32 ellipse_width = 400.f;
-    const F32 ellipse_height = 400.f;
-    const F32 a = ellipse_width / 2.f;
-    const F32 b = ellipse_height / 2.f;
-    const F32 tau = 2.f * Numbers::PI;
-    const F32 radians = tau * std::fmodf(timeMS, periodMS) / periodMS;
-    return sf::Vector2f(a * std::cos(radians), b * std::sin(radians));
+  const F32 ellipse_width = 400.0f;
+  const F32 ellipse_height = 400.0f;
+  const F32 a = ellipse_width / 2.0f;
+  const F32 b = ellipse_height / 2.0f;
+  const F32 tau = 2.0f * Numbers::PI;
+  const F32 radians = tau * std::fmodf(timeMS, periodMS) / periodMS;
+  return sf::Vector2f(a * std::cos(radians), b * std::sin(radians));
 }
 
 void handleEvents(sf::RenderWindow& window) {
@@ -190,7 +206,7 @@ I32 main() {
   sf::ContextSettings settings;
   settings.antialiasingLevel = 8;
   sf::RenderWindow window(sf::VideoMode(1000, 1000), "SFML Works!", sf::Style::Default, settings);
-  window.setFramerateLimit(120);
+  window.setFramerateLimit(60);
 
   sf::CircleShape shape(100.f);
   sf::CircleShape centeredCircle(100.f);
@@ -221,7 +237,7 @@ I32 main() {
   // Initialize layer
   Layer layer(&window);
   layer.addToLayer(&centeredCircle);
-  layer.addToLayer(&shape);
+  //layer.addToLayer(&shape);
   layer.addToLayer(&afterImages);
   layer.addToLayer(&frameRateText);
 
@@ -254,34 +270,38 @@ I32 main() {
       const sf::Vector2f radius(sf::Vector2f(shape.getRadius(), shape.getRadius()));
 
       // TODO :: Clean this up!
-      const U8 selector = Numbers::randNum<U8>(1,3);
+      const U8 selector = Numbers::randNum<U8>(1,1);
       switch(selector) {
-        case 1: {
-                  EllipseShape someShape(radius);
-                  someShape.setFillColor(shape.getFillColor());
-                  someShape.setPosition(posCenter + posChange);
-                  afterImages.update(std::make_unique<EllipseShape>(someShape));
-                  break;
-                }
-        case 2: {
-                  sf::CircleShape someShape(shape.getRadius());
-                  someShape.setFillColor(shape.getFillColor());
-                  someShape.setPosition(posCenter + posChange);
-                  afterImages.update(std::make_unique<sf::CircleShape>(someShape));
-                  break;
-                }
-        default: { // case 3
-                   sf::RectangleShape someShape(radius);
-                   someShape.setFillColor(shape.getFillColor());
-                   someShape.setPosition(posCenter + posChange);
-                   afterImages.update(std::make_unique<sf::RectangleShape>(someShape));
-                 }
+        case 1:
+          {
+            EllipseShape someShape(radius);
+            //EllipseShape someShape({radius.x, radius.y});
+            someShape.setFillColor(shape.getFillColor());
+            someShape.setPosition(posCenter + posChange);
+            afterImages.update(std::make_unique<EllipseShape>(someShape));
+            break;
+          }
+        case 2:
+          {
+            sf::CircleShape someShape(shape.getRadius());
+            someShape.setFillColor(shape.getFillColor());
+            someShape.setPosition(posCenter + posChange);
+            afterImages.update(std::make_unique<sf::CircleShape>(someShape));
+            break;
+          }
+        default:
+          { // case 3
+            sf::RectangleShape someShape({2 * radius.x, 2 * radius.y});
+            someShape.setFillColor(shape.getFillColor());
+            someShape.setPosition(posCenter + posChange);
+            afterImages.update(std::make_unique<sf::RectangleShape>(someShape));
+          }
       }
     }
 
     elapsedMS = static_cast<U32>(clock.getElapsedTime().asMilliseconds());
     const F32 time = static_cast<F32>(clock.getElapsedTime().asSeconds());
-    const F32 frameRate = static_cast<F32>(++frames) / time;
+    const U32 frameRate = static_cast<U32>(++frames / time);
 
     std::stringstream ss;
     ss << "[ Frame Rate: " << frameRate << " FPS ]";
