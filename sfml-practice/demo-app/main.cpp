@@ -1,7 +1,10 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <cstdint>
+//#include <format>
+//#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <list>
@@ -41,59 +44,60 @@ namespace Numbers {
 
   constexpr F32 PI = std::numbers::pi_v<F32>;
 
-  template<NumberType T>
-    T randNum(const T min, const T max) {
-      // Apply the value min/max range for the uniform numeric distribution and apply engine
-      return std::uniform_int_distribution<T>(min,max)(engine);
-    }
+  template<NumberType T> T randNum(const T min, const T max) {
+    // Apply the value min/max range for the uniform numeric distribution and apply engine
+    return std::uniform_int_distribution<T>(min,max)(engine);
+  }
 
-  template<NumberType T>
-    constexpr T min() {
-      return std::numeric_limits<T>::min();
-    }
+  template<NumberType T> consteval T min() {
+    return std::numeric_limits<T>::min();
+  }
 
-  template<NumberType T>
-    constexpr T max() {
-      return std::numeric_limits<T>::max();
-    }
+  template<NumberType T> consteval T max() {
+    return std::numeric_limits<T>::max();
+  }
 
-  template<NumberType T>
-    T randNum() {
-      // Define the value min/max range for the uniform numeric distribution and apply engine
-      return randNum<T>(min<T>(), max<T>());
-    }
+  template<NumberType T> T randNum() {
+    // Define the value min/max range for the uniform numeric distribution and apply engine
+    return randNum<T>(min<T>(), max<T>());
+  }
+
+  // Taken from: https://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
+  template <NumberType T> T sign(const T val) {
+    return (T(0) < val) - (val < T(0));
+  }
 }
 
 struct EllipseShape : public sf::Shape {
-    sf::Vector2f m_radius;
-    F32 dx;
-    F32 dy;
+  sf::Vector2f m_radius;
+  F32 dx;
+  F32 dy;
 
-    EllipseShape(const sf::Vector2f& radius) : m_radius(radius) {
-      dx = 1.0f;
-      dy = 1.0f;
-      update();
-    }
+  EllipseShape(const sf::Vector2f& radius) : m_radius(radius) {
+    dx = 1.0f;
+    dy = 1.0f;
+    update();
+  }
 
-    virtual std::size_t getPointCount() const override {
-      return 30; // fixed, but could be an attribute of the class if needed
-                 //return 3; // fixed, but could be an attribute of the class if needed
-    }
+  virtual std::size_t getPointCount() const override {
+    return 30; // fixed, but could be an attribute of the class if needed
+               //return 3; // fixed, but could be an attribute of the class if needed
+  }
 
-    virtual sf::Vector2f getPoint(const unsigned long index) const override {
-      const F32 angle = index * 2 * Numbers::PI / getPointCount() - Numbers::PI / 2;
-      const F32 x = std::cos(angle) * m_radius.x * dx;
-      const F32 y = std::sin(angle) * m_radius.y * dy;
-      return sf::Vector2f(m_radius.x + x, m_radius.y + y);
-    }
+  virtual sf::Vector2f getPoint(const unsigned long index) const override {
+    const F32 angle = index * 2 * Numbers::PI / getPointCount() - Numbers::PI / 2;
+    const F32 x = std::cos(angle) * m_radius.x * dx;
+    const F32 y = std::sin(angle) * m_radius.y * dy;
+    return sf::Vector2f(m_radius.x + x, m_radius.y + y);
+  }
 
-    void setRadius() {
-      update();
-    }
+  void setRadius() {
+    update();
+  }
 
-    sf::Vector2f& getRadius() {
-      return m_radius;
-    }
+  sf::Vector2f& getRadius() {
+    return m_radius;
+  }
 };
 
 class Layer {
@@ -150,10 +154,11 @@ class AfterImagesContainer : public sf::Drawable {
           color.a = static_cast<U8>(color.a - (255 / maxAfterImages));
           ellipse->setFillColor(color);
           if (color.a > 255 / 2) {
-            ellipse->dx = ellipse->dx * 1.05f;
+            ellipse->dx = ellipse->dx * 1.15f;
+            ellipse->dy = ellipse->dy * 0.85f;
           } else {
-            ellipse->dx = ellipse->dx * 0.95f;
-            ellipse->dy = ellipse->dy * 1.05f;
+            ellipse->dx = ellipse->dx * 0.75f;
+            ellipse->dy = ellipse->dy * 1.25f;
           }
           ellipse->setRadius();
         } else if ((circle = dynamic_cast<sf::CircleShape*>(drawable.get()))) { // circle
@@ -188,17 +193,53 @@ const sf::Vector2f transform(const F32 periodMS, const F32 timeMS) {
   return sf::Vector2f(a * std::cos(radians), b * std::sin(radians));
 }
 
-void handleEvents(sf::RenderWindow& window) {
+void handleEvents(sf::RenderWindow& window, sf::CircleShape& wasd) {
+  static std::array<bool, sf::Keyboard::KeyCount> pressedKeys;
+  constexpr F32 step = 10;
   sf::Event event;
   while (window.pollEvent(event)) {
-    if (event.type == sf::Event::KeyPressed) {
-      if (event.key.code == sf::Keyboard::Escape) {
-        window.close();
-      }
-    }
+    // Exit early!
     if (event.type == sf::Event::Closed) {
       window.close();
+      break;
     }
+
+    if (event.type == sf::Event::KeyReleased) {
+      pressedKeys[static_cast<unsigned long>(event.key.code)] = false;
+    }
+    if (event.type == sf::Event::KeyPressed) {
+      pressedKeys[static_cast<unsigned long>(event.key.code)] = true;
+    }
+  }
+
+  sf::Vector2f posChange(0,0);
+
+  if (pressedKeys[sf::Keyboard::W]) {
+    posChange -= sf::Vector2f(0, step);
+  }
+  if (pressedKeys[sf::Keyboard::S]) {
+    posChange += sf::Vector2f(0, step);
+  }
+  if (pressedKeys[sf::Keyboard::A]) {
+    posChange -= sf::Vector2f(step, 0);
+  }
+  if (pressedKeys[sf::Keyboard::D]) {
+    posChange += sf::Vector2f(step, 0);
+  }
+
+  // TODO :: Not the best way to do this since any pressed key will run this!
+  if (std::ranges::any_of(pressedKeys, [](const bool pressed) { return pressed; })) {
+    //std::ranges::for_each(afterImages.rbegin(), afterImages.rend(), [&window](const sf::CircleShape& afterImage) { window.draw(afterImage); });
+    // TODO :: Diagonal distance calculation is wrong!
+    posChange.x = Numbers::sign(posChange.x) * std::sqrt(step * step - posChange.y * posChange.y);
+    posChange.y = Numbers::sign(posChange.y) * std::sqrt(step * step - posChange.x * posChange.x);
+    //posChange.x = Numbers::sign(posChange.x) * std::sqrt(posChange.x * posChange.x + posChange.y * posChange.y);
+    //posChange.y = Numbers::sign(posChange.y) * std::sqrt(posChange.x * posChange.x + posChange.y * posChange.y);
+    sf::Vector2f pos = wasd.getPosition() + posChange;
+    pos.x = std::clamp(pos.x, 0.0f, 1000.0f - 2*wasd.getRadius());
+    pos.y = std::clamp(pos.y, 0.0f, 1000.0f - 2*wasd.getRadius());
+    wasd.setPosition(pos);
+    std::cout << "New (x,y) pos: (" << wasd.getPosition().x << ", " << wasd.getPosition().y << ")" << std::endl;
   }
 }
 
@@ -208,8 +249,9 @@ I32 main() {
   sf::RenderWindow window(sf::VideoMode(1000, 1000), "SFML Works!", sf::Style::Default, settings);
   window.setFramerateLimit(60);
 
-  sf::CircleShape shape(100.f);
-  sf::CircleShape centeredCircle(100.f);
+  sf::CircleShape shape(100.0f);
+  sf::CircleShape centeredCircle(100.0f);
+  sf::CircleShape wasd(50.0f);
 
   //std::list<EllipseShape> afterImages;
   U8 maxAfterImages = 20;
@@ -237,22 +279,24 @@ I32 main() {
   // Initialize layer
   Layer layer(&window);
   layer.addToLayer(&centeredCircle);
-  //layer.addToLayer(&shape);
+  layer.addToLayer(&shape);
   layer.addToLayer(&afterImages);
   layer.addToLayer(&frameRateText);
+  layer.addToLayer(&wasd);
 
   U32 frames = 0;
 
   while (window.isOpen()) {
     // Handle events
-    handleEvents(window);
+    handleEvents(window, wasd);
 
     const F32 periodMS = 3000.0f;
 
     // Set position according to time passed
     const sf::Vector2i posMouse = sf::Mouse::getPosition(window);
     const sf::Vector2f posCenter = sf::Vector2f(posMouse.x - shape.getRadius(), posMouse.y - shape.getRadius());
-    const sf::Vector2f posChange = transform(periodMS, static_cast<F32>(clock.getElapsedTime().asMilliseconds()));
+    //const sf::Vector2f posChange = transform(periodMS, static_cast<F32>(clock.getElapsedTime().asMilliseconds()));
+    const sf::Vector2f posChange = transform(periodMS, 0.0);
     shape.setPosition(posCenter + posChange);
     //shape.setPosition(posCenter);
 
@@ -270,7 +314,7 @@ I32 main() {
       const sf::Vector2f radius(sf::Vector2f(shape.getRadius(), shape.getRadius()));
 
       // TODO :: Clean this up!
-      const U8 selector = Numbers::randNum<U8>(1,1);
+      const U8 selector = 1;//Numbers::randNum<U8>(1,3);
       switch(selector) {
         case 1:
           {
